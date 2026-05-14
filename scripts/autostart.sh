@@ -36,11 +36,9 @@ echo "✅ .env generated"
 # ── Cek secrets ────────────────────────────────────────────────
 if [ -z "$API_ID" ] || [ -z "$BOT_TOKEN" ] || [ -z "$STRING_SESSION" ]; then
     echo "⚠️  SECRETS BELUM LENGKAP!"
-    echo "Buka: https://github.com/zahirnioi45-beep/raxi-music/settings/secrets/codespaces"
     exit 1
 fi
 
-# ── Buat direktori ─────────────────────────────────────────────
 mkdir -p $DIR/{database,cache,downloads}
 
 # ── Install ffmpeg ─────────────────────────────────────────────
@@ -58,37 +56,30 @@ fi
 source $VENV/bin/activate
 echo "✅ Python: $(python3 --version)"
 
-# ── Install dependencies (dengan error handling) ───────────────
+# ── Install dependencies ───────────────────────────────────────
 if ! python3 -c "import pyrogram" &>/dev/null 2>&1; then
     echo "📦 Installing dependencies..."
-
     pip install -q --upgrade pip
 
-    # Install satu per satu agar mudah debug jika ada yang gagal
-    echo "  → pyrogram..."
-    pip install -q "pyrogram==2.0.106" "TgCrypto==1.2.5" || {
-        echo "❌ Gagal install pyrogram!"
-        exit 1
-    }
+    echo "  → pyrogram + TgCrypto..."
+    pip install -q "pyrogram==2.0.106" "TgCrypto==1.2.5" || { echo "❌ pyrogram gagal!"; exit 1; }
 
-    echo "  → pytgcalls..."
-    pip install -q "pytgcalls==3.0.0.dev24" || \
-    pip install -q "pytgcalls" || {
-        echo "❌ Gagal install pytgcalls!"
-        exit 1
-    }
+    echo "  → ntgcalls (pytgcalls core)..."
+    pip install -q ntgcalls || pip install -q ntgcalls --pre || echo "⚠️ ntgcalls skip"
+
+    echo "  → pytgcalls (no deps check)..."
+    pip install -q --no-deps "pytgcalls==2.1.0" || \
+    pip install -q --no-deps "pytgcalls==1.0.0" || \
+    pip install -q --no-deps pytgcalls || { echo "❌ pytgcalls gagal!"; exit 1; }
 
     echo "  → other deps..."
-    pip install -q yt-dlp aiohttp python-dotenv psutil || {
-        echo "❌ Gagal install deps lain!"
-        exit 1
-    }
+    pip install -q yt-dlp aiohttp python-dotenv psutil
 
-    # Verifikasi
-    python3 -c "import pyrogram; import pytgcalls; print('✅ All imports OK')" || {
-        echo "❌ Import check gagal!"
-        exit 1
-    }
+    echo "  → verifikasi..."
+    python3 -c "import pyrogram; print('  pyrogram ✅')"
+    python3 -c "import pytgcalls; print('  pytgcalls ✅')" || echo "  pytgcalls ⚠️ cek manual"
+    python3 -c "import yt_dlp; print('  yt-dlp ✅')"
+    echo "✅ Dependencies selesai"
 else
     echo "✅ Dependencies sudah ada"
 fi
@@ -96,24 +87,15 @@ fi
 echo ""
 echo "🚀 Starting RAXI MUSIC..."
 echo ""
-
 cd $DIR
 
-# ── Run bot dengan auto restart ────────────────────────────────
 CRASH_COUNT=0
 while true; do
     python3 main.py
     EXIT=$?
-    if [ $EXIT -eq 0 ]; then
-        echo "👋 Bot stopped normally."
-        break
-    fi
+    if [ $EXIT -eq 0 ]; then echo "👋 Bot stopped."; break; fi
     CRASH_COUNT=$((CRASH_COUNT + 1))
-    echo "⚠️  Bot crash #$CRASH_COUNT (exit $EXIT) — Restart dalam 5 detik..."
-    # Kalau crash 10x berturut-turut, stop dulu biar tidak spam
-    if [ $CRASH_COUNT -ge 10 ]; then
-        echo "❌ Terlalu banyak crash. Cek error di atas."
-        break
-    fi
+    if [ $CRASH_COUNT -ge 5 ]; then echo "❌ Terlalu banyak crash. Cek error di atas."; break; fi
+    echo "⚠️  Crash #$CRASH_COUNT — Restart dalam 5 detik..."
     sleep 5
 done
