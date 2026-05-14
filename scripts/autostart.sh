@@ -1,12 +1,11 @@
 #!/bin/bash
 # ╔══════════════════════════════════════════╗
 # ║    RAXI MUSIC - Auto Start Script        ║
-# ║    Generate .env dari Codespaces Secrets ║
 # ╚══════════════════════════════════════════╝
 
 echo "🌑 RAXI MUSIC — Auto Start..."
 
-# Generate .env dari environment variables (Codespaces Secrets)
+# Generate .env dari Codespaces Secrets
 cat > /workspaces/raxi-music/.env << EOF
 API_ID=${API_ID:-}
 API_HASH=${API_HASH:-}
@@ -26,27 +25,28 @@ LOG_LEVEL=${LOG_LEVEL:-INFO}
 MAX_QUEUE_SIZE=${MAX_QUEUE_SIZE:-50}
 EOF
 
-echo "✅ .env generated dari Codespaces Secrets"
+echo "✅ .env generated"
 
 # Cek wajib
 if [ -z "$API_ID" ] || [ -z "$BOT_TOKEN" ] || [ -z "$STRING_SESSION" ]; then
-    echo ""
     echo "⚠️  SECRETS BELUM DIISI!"
-    echo "Buka: https://github.com/zahirnioi45-beep/raxi-music/settings/secrets/codespaces"
-    echo "Tambahkan: API_ID, API_HASH, BOT_TOKEN, STRING_SESSION, OWNER_ID"
-    echo ""
     exit 1
 fi
 
-# Buat direktori yang dibutuhkan
+# Buat direktori
 mkdir -p /workspaces/raxi-music/{database,cache,downloads}
 
-# Install deps kalau belum
-pip show pyrogram > /dev/null 2>&1 || {
-    echo "📦 Installing dependencies..."
-    pip install -q -r /workspaces/raxi-music/requirements.txt
-}
+# Install ffmpeg kalau belum ada
+if ! command -v ffmpeg &> /dev/null; then
+    echo "📦 Installing ffmpeg..."
+    sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+fi
+
+# Install Python deps pakai python3 -m pip
+echo "📦 Installing dependencies..."
+python3 -m pip install -q --upgrade pip
+python3 -m pip install -q -r /workspaces/raxi-music/requirements.txt
 
 echo "🚀 Starting RAXI MUSIC..."
 cd /workspaces/raxi-music
-python main.py
+python3 main.py
