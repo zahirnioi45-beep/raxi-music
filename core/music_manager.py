@@ -11,8 +11,7 @@ import time
 from typing import Optional, TYPE_CHECKING
 
 from pytgcalls import PyTgCalls
-from pytgcalls.types import AudioPiped, AudioParameters
-from pytgcalls.exceptions import NoActiveGroupCall, GroupCallNotFound
+from pytgcalls.types import AudioPiped
 
 from database import QueueDB, ChatDB, StatsDB
 from core.ytdl import ytdl
@@ -26,7 +25,6 @@ logger = get_logger(__name__)
 
 
 class ActiveStream:
-    """Holds info about currently playing stream per chat."""
     __slots__ = ("track", "started_at", "paused", "chat_id")
 
     def __init__(self, track: dict, chat_id: int):
@@ -42,17 +40,8 @@ class ActiveStream:
 
 
 class MusicManager:
-    """
-    Central music controller.
-    - Manages per-chat voice streams
-    - Queue CRUD
-    - Loop / shuffle
-    - Volume
-    - Auto-next track
-    """
-
     def __init__(self):
-        self._active: dict[int, ActiveStream] = {}  # chat_id → ActiveStream
+        self._active: dict[int, ActiveStream] = {}
         self._call: Optional["PyTgCalls"] = None
         self._bot: Optional["Client"] = None
 
@@ -60,10 +49,7 @@ class MusicManager:
         self._bot = bot
         self._call = call
 
-    # ─── Play ─────────────────────────────────────────────────────────────────
-
     async def play(self, chat_id: int, track: dict) -> bool:
-        """Start streaming a track in voice chat."""
         if not self._call:
             logger.error("PyTgCalls not initialised")
             return False
@@ -74,16 +60,11 @@ class MusicManager:
             return False
 
         try:
-            audio = AudioPiped(
-                stream_url,
-                audio_parameters=AudioParameters(
-                    bitrate=128,
-                ),
-            )
+            audio = AudioPiped(stream_url)
             try:
                 await self._call.change_stream(chat_id, audio)
                 logger.info(f"🔄 Changed stream in {chat_id}: {track['title']}")
-            except (NoActiveGroupCall, GroupCallNotFound):
+            except Exception:
                 await self._call.join_group_call(chat_id, audio)
                 logger.info(f"✅ Joined voice chat in {chat_id}: {track['title']}")
 
@@ -95,13 +76,7 @@ class MusicManager:
             logger.error(f"Play error in {chat_id}: {e}")
             return False
 
-    # ─── Queue Play ───────────────────────────────────────────────────────────
-
     async def queue_and_play(self, chat_id: int, track: dict, force: bool = False) -> dict:
-        """
-        Add track to queue. If nothing is playing or force=True, play immediately.
-        Returns status dict.
-        """
         if force or chat_id not in self._active:
             ok = await self.play(chat_id, track)
             if ok:
@@ -113,21 +88,17 @@ class MusicManager:
             pos = QueueDB.length(chat_id)
             return {"status": "queued", "position": pos, "track": track}
 
-    # ─── Controls ─────────────────────────────────────────────────────────────
-
     async def skip(self, chat_id: int) -> Optional[dict]:
-        """Skip current track and play next in queue."""
         loop_mode = ChatDB.get_loop(chat_id)
 
         if loop_mode == "one" and chat_id in self._active:
-            # Replay same track
             track = self._active[chat_id].track
             await self.play(chat_id, track)
             return track
 
         next_track = await QueueDB.remove_first(chat_id)
         if next_track:
-            if loop_mode == "all":
+            if loop_mode == "all" and chat_id in self._active:
                 await QueueDB.add_track(chat_id, self._active[chat_id].track)
             await self.play(chat_id, next_track)
             return next_track
@@ -136,7 +107,6 @@ class MusicManager:
             return None
 
     async def stop(self, chat_id: int):
-        """Stop stream and leave voice chat."""
         try:
             if self._call:
                 await self._call.leave_group_call(chat_id)
@@ -167,7 +137,6 @@ class MusicManager:
         return False
 
     async def set_volume(self, chat_id: int, volume: int) -> bool:
-        """Set volume 1–200."""
         volume = max(1, min(200, volume))
         try:
             if self._call:
@@ -178,8 +147,6 @@ class MusicManager:
             logger.error(f"Volume error: {e}")
         return False
 
-    # ─── Queue Ops ────────────────────────────────────────────────────────────
-
     async def shuffle_queue(self, chat_id: int) -> bool:
         q = QueueDB.get(chat_id)
         if len(q) < 2:
@@ -188,15 +155,11 @@ class MusicManager:
         await QueueDB.set(chat_id, q)
         return True
 
-    # ─── Playback End Handler ─────────────────────────────────────────────────
-
     async def on_stream_end(self, chat_id: int):
-        """Called by PyTgCalls when stream ends. Auto-play next."""
         loop_mode = ChatDB.get_loop(chat_id)
 
         if loop_mode == "one" and chat_id in self._active:
             track = self._active[chat_id].track
-            # Refresh URL before replaying
             refreshed = await ytdl.search(track.get("video_url", track.get("title", "")))
             if refreshed:
                 track["url"] = refreshed["url"]
@@ -209,14 +172,12 @@ class MusicManager:
 
         next_track = await QueueDB.remove_first(chat_id)
         if next_track:
-            # Refresh URL (stream URLs expire)
             refreshed = await ytdl.search(next_track.get("video_url", next_track.get("title", "")))
             if refreshed:
                 next_track["url"] = refreshed["url"]
             ok = await self.play(chat_id, next_track)
             if ok and self._bot:
                 try:
-                    chat_data = ChatDB.get(chat_id)
                     await self._bot.send_message(
                         chat_id,
                         self._now_playing_text(next_track),
@@ -225,10 +186,8 @@ class MusicManager:
                 except Exception:
                     pass
         else:
-            # Nothing left
             self._active.pop(chat_id, None)
-            mode_247 = ChatDB.get_247(chat_id)
-            if not mode_247:
+            if not ChatDB.get_247(chat_id):
                 try:
                     if self._call:
                         await self._call.leave_group_call(chat_id)
@@ -244,8 +203,6 @@ class MusicManager:
             f"┣ 🕐 `{duration}`\n"
             f"┗ 📡 `{track.get('source', 'youtube').upper()}`"
         )
-
-    # ─── State Accessors ──────────────────────────────────────────────────────
 
     def is_playing(self, chat_id: int) -> bool:
         return chat_id in self._active and not self._active[chat_id].paused
