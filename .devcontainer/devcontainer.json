@@ -1,12 +1,12 @@
 {
   "name": "RAXI MUSIC",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
 
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}
   },
 
-  "onCreateCommand": "apt-get update -qq && apt-get install -y -qq ffmpeg && python3 -m venv /workspaces/raxi-music/venv && /workspaces/raxi-music/venv/bin/pip install -q --upgrade pip && /workspaces/raxi-music/venv/bin/pip install -q -r /workspaces/raxi-music/requirements.txt && echo '✅ Setup selesai!'",
+  "onCreateCommand": "sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && python3.11 -m venv /workspaces/raxi-music/venv && /workspaces/raxi-music/venv/bin/pip install -q --upgrade pip setuptools wheel && /workspaces/raxi-music/venv/bin/pip install -q --only-binary :all: ntgcalls && /workspaces/raxi-music/venv/bin/pip install -q -r /workspaces/raxi-music/requirements.txt && echo '✅ Setup selesai!'",
 
   "postStartCommand": "bash /workspaces/raxi-music/scripts/autostart.sh",
 

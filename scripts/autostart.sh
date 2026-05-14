@@ -4,7 +4,6 @@
 # ╚══════════════════════════════════════════╝
 
 DIR="/workspaces/raxi-music"
-VENV="$DIR/venv"
 
 echo ""
 echo "╔══════════════════════════════════════╗"
@@ -44,13 +43,27 @@ mkdir -p $DIR/{database,cache,downloads}
 # ── Install ffmpeg ─────────────────────────────────────────────
 if ! command -v ffmpeg &>/dev/null; then
     echo "📦 Installing ffmpeg..."
-    apt-get install -y -qq ffmpeg 2>/dev/null && echo "✅ ffmpeg OK"
+    sudo apt-get install -y -qq ffmpeg 2>/dev/null && echo "✅ ffmpeg OK"
 fi
+
+# ── Pilih Python interpreter (prefer 3.11, fallback 3.10, lalu 3.x) ──
+if command -v python3.11 &>/dev/null; then
+    PYTHON=python3.11
+    echo "🐍 Menggunakan Python 3.11"
+elif command -v python3.10 &>/dev/null; then
+    PYTHON=python3.10
+    echo "🐍 Menggunakan Python 3.10"
+else
+    PYTHON=python3
+    echo "🐍 Menggunakan $(python3 --version)"
+fi
+
+VENV="$DIR/venv"
 
 # ── Setup venv ─────────────────────────────────────────────────
 if [ ! -f "$VENV/bin/python3" ]; then
-    echo "🐍 Creating venv..."
-    python3 -m venv $VENV
+    echo "🐍 Creating venv dengan $PYTHON..."
+    $PYTHON -m venv $VENV
 fi
 
 source $VENV/bin/activate
@@ -59,23 +72,25 @@ echo "✅ Python: $(python3 --version)"
 # ── Install dependencies ───────────────────────────────────────
 if ! python3 -c "import pyrogram" &>/dev/null 2>&1; then
     echo "📦 Installing dependencies..."
-    pip install -q --upgrade pip
+    pip install -q --upgrade pip setuptools wheel
 
     echo "  → pyrogram + TgCrypto..."
     pip install -q "pyrogram==2.0.106" "TgCrypto==1.2.5" || { echo "❌ pyrogram gagal!"; exit 1; }
 
-    echo "  → ntgcalls (native tgcalls core)..."
-    pip install -q "ntgcalls>=2.1.0" || { echo "❌ ntgcalls gagal!"; exit 1; }
+    echo "  → ntgcalls (binary only, no compile)..."
+    pip install -q --only-binary :all: "ntgcalls>=2.0.0" || \
+    pip install -q --only-binary :all: ntgcalls || \
+    { echo "❌ ntgcalls gagal! Python version mungkin tidak didukung."; exit 1; }
 
-    echo "  → py-tgcalls (pytgcalls wrapper)..."
-    pip install -q "py-tgcalls>=2.2.11" || { echo "❌ py-tgcalls gagal!"; exit 1; }
+    echo "  → py-tgcalls..."
+    pip install -q --no-deps "py-tgcalls>=2.2.11" || { echo "❌ py-tgcalls gagal!"; exit 1; }
 
     echo "  → other deps..."
     pip install -q yt-dlp aiohttp python-dotenv psutil
 
     echo "  → verifikasi..."
     python3 -c "import pyrogram; print('  pyrogram ✅')"
-    python3 -c "from pytgcalls import PyTgCalls; print('  pytgcalls ✅')" || echo "  pytgcalls ⚠️ cek manual"
+    python3 -c "from pytgcalls import PyTgCalls; print('  pytgcalls ✅')" || echo "  pytgcalls ⚠️"
     python3 -c "import yt_dlp; print('  yt-dlp ✅')"
     echo "✅ Dependencies selesai"
 else
