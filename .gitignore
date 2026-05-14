@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# Virtual envs
+venv/
+env/
+.venv/
+.env/
+
+# Environment secrets
+.env
+
+# Bot sessions
+*.session
+*.session-journal
+raxi_bot.session*
+raxi_user.session*
+
+# Cache & Downloads
+cache/
+downloads/
+
+# Database (keep schema but not data)
+database/*.json
+!database/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# camoufox
+.camoufox-cli/

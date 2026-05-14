@@ -1,0 +1,7 @@
+pyrogram==2.0.106
+TgCrypto
+py-tgcalls==0.9.26
+yt-dlp>=2024.1.0
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
+psutil>=5.9.0
