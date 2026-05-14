@@ -1,26 +1,41 @@
 {
-  "name": "RAXI MUSIC Dev",
+  "name": "RAXI MUSIC",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}
   },
-  "postCreateCommand": "bash scripts/setup_dev.sh",
+
+  "onCreateCommand": "bash /workspaces/raxi-music/scripts/setup_dev.sh",
+
+  "postStartCommand": "bash /workspaces/raxi-music/scripts/autostart.sh",
+
+  "secrets": [
+    "API_ID",
+    "API_HASH",
+    "BOT_TOKEN",
+    "STRING_SESSION",
+    "OWNER_ID",
+    "OWNER_USERNAME",
+    "SUDO_USERS",
+    "SPOTIFY_CLIENT_ID",
+    "SPOTIFY_CLIENT_SECRET",
+    "DONATE_LINK"
+  ],
+
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "ms-python.black-formatter",
-        "ms-python.pylint",
-        "charliermarsh.ruff"
+        "ms-python.black-formatter"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "editor.formatOnSave": true,
         "editor.tabSize": 4
       }
     }
   },
-  "forwardPorts": [],
+
   "remoteEnv": {
     "PYTHONPATH": "/workspaces/raxi-music"
   }
