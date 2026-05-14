@@ -4,6 +4,7 @@
 # ╚══════════════════════════════════════════╝
 
 DIR="/workspaces/raxi-music"
+VENV="$DIR/venv"
 
 echo ""
 echo "╔══════════════════════════════════════╗"
@@ -46,24 +47,10 @@ if ! command -v ffmpeg &>/dev/null; then
     sudo apt-get install -y -qq ffmpeg 2>/dev/null && echo "✅ ffmpeg OK"
 fi
 
-# ── Pilih Python interpreter (prefer 3.11, fallback 3.10, lalu 3.x) ──
-if command -v python3.11 &>/dev/null; then
-    PYTHON=python3.11
-    echo "🐍 Menggunakan Python 3.11"
-elif command -v python3.10 &>/dev/null; then
-    PYTHON=python3.10
-    echo "🐍 Menggunakan Python 3.10"
-else
-    PYTHON=python3
-    echo "🐍 Menggunakan $(python3 --version)"
-fi
-
-VENV="$DIR/venv"
-
 # ── Setup venv ─────────────────────────────────────────────────
 if [ ! -f "$VENV/bin/python3" ]; then
-    echo "🐍 Creating venv dengan $PYTHON..."
-    $PYTHON -m venv $VENV
+    echo "🐍 Creating venv..."
+    python3 -m venv $VENV
 fi
 
 source $VENV/bin/activate
@@ -77,10 +64,8 @@ if ! python3 -c "import pyrogram" &>/dev/null 2>&1; then
     echo "  → pyrogram + TgCrypto..."
     pip install -q "pyrogram==2.0.106" "TgCrypto==1.2.5" || { echo "❌ pyrogram gagal!"; exit 1; }
 
-    echo "  → ntgcalls (binary only, no compile)..."
-    pip install -q --only-binary :all: "ntgcalls>=2.0.0" || \
-    pip install -q --only-binary :all: ntgcalls || \
-    { echo "❌ ntgcalls gagal! Python version mungkin tidak didukung."; exit 1; }
+    echo "  → ntgcalls..."
+    pip install -q ntgcalls || { echo "❌ ntgcalls gagal!"; exit 1; }
 
     echo "  → py-tgcalls..."
     pip install -q --no-deps "py-tgcalls>=2.2.11" || { echo "❌ py-tgcalls gagal!"; exit 1; }
@@ -90,7 +75,7 @@ if ! python3 -c "import pyrogram" &>/dev/null 2>&1; then
 
     echo "  → verifikasi..."
     python3 -c "import pyrogram; print('  pyrogram ✅')"
-    python3 -c "from pytgcalls import PyTgCalls; print('  pytgcalls ✅')" || echo "  pytgcalls ⚠️"
+    python3 -c "from pytgcalls import PyTgCalls; print('  pytgcalls ✅')" || { echo "❌ pytgcalls import gagal!"; exit 1; }
     python3 -c "import yt_dlp; print('  yt-dlp ✅')"
     echo "✅ Dependencies selesai"
 else
