@@ -3,9 +3,10 @@
 # ║    RAXI MUSIC - Auto Start Script        ║
 # ╚══════════════════════════════════════════╝
 
-echo "🌑 RAXI MUSIC — Auto Start..."
-
 DIR="/workspaces/raxi-music"
+VENV="$DIR/venv"
+
+echo "🌑 RAXI MUSIC — Auto Start..."
 
 # Generate .env dari Codespaces Secrets
 cat > $DIR/.env << EOF
@@ -30,34 +31,56 @@ echo "✅ .env generated"
 
 # Cek secrets wajib
 if [ -z "$API_ID" ] || [ -z "$BOT_TOKEN" ] || [ -z "$STRING_SESSION" ]; then
-    echo "⚠️  SECRETS BELUM DIISI!"
+    echo ""
+    echo "⚠️  SECRETS BELUM LENGKAP!"
+    echo "Buka: https://github.com/zahirnioi45-beep/raxi-music/settings/secrets/codespaces"
     exit 1
 fi
 
 # Buat direktori
 mkdir -p $DIR/{database,cache,downloads}
 
-# Install ffmpeg
-if ! command -v ffmpeg &> /dev/null; then
-    echo "📦 Installing ffmpeg..."
-    apk add --no-cache ffmpeg 2>/dev/null || apt-get install -y ffmpeg 2>/dev/null || echo "⚠️ ffmpeg skip"
-fi
-
-# Setup virtual environment
-if [ ! -d "$DIR/venv" ]; then
-    echo "🐍 Creating virtual environment..."
-    python3 -m venv $DIR/venv
+# Setup venv kalau belum ada
+if [ ! -f "$VENV/bin/python3" ]; then
+    echo "🐍 Creating venv..."
+    python3 -m venv $VENV
 fi
 
 # Aktifkan venv
-source $DIR/venv/bin/activate
-echo "✅ venv aktif: $(python3 --version)"
+source $VENV/bin/activate
+echo "✅ venv: $(python3 --version)"
 
-# Install dependencies
-echo "📦 Installing dependencies..."
-pip install -q --upgrade pip
-pip install -q -r $DIR/requirements.txt
+# Install deps kalau belum
+if ! python3 -c "import pyrogram" &>/dev/null; then
+    echo "📦 Installing dependencies..."
+    pip install -q --upgrade pip
+    pip install -q -r $DIR/requirements.txt
+    echo "✅ Dependencies installed"
+fi
 
-echo "🚀 Starting RAXI MUSIC..."
+# Cek ffmpeg
+if ! command -v ffmpeg &>/dev/null; then
+    echo "📦 Installing ffmpeg..."
+    apt-get install -y -qq ffmpeg 2>/dev/null || echo "⚠️ ffmpeg tidak tersedia"
+fi
+
+echo ""
+echo "╔══════════════════════════════════════╗"
+echo "║   🎵  RAXI MUSIC is STARTING...      ║"
+echo "╚══════════════════════════════════════╝"
+echo ""
+
 cd $DIR
-python3 main.py
+
+# Jalankan bot — auto restart kalau crash
+while true; do
+    python3 main.py
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 0 ]; then
+        echo "👋 Bot stopped normally."
+        break
+    fi
+    echo ""
+    echo "⚠️  Bot crash (exit $EXIT_CODE) — Restart dalam 5 detik..."
+    sleep 5
+done
