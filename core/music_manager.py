@@ -11,7 +11,7 @@ import time
 from typing import Optional, TYPE_CHECKING
 
 from pytgcalls import PyTgCalls
-from pytgcalls.types import AudioPiped
+from pytgcalls.types import MediaStream, StreamEnded
 
 from database import QueueDB, ChatDB, StatsDB
 from core.ytdl import ytdl
@@ -60,13 +60,11 @@ class MusicManager:
             return False
 
         try:
-            audio = AudioPiped(stream_url)
-            try:
-                await self._call.change_stream(chat_id, audio)
-                logger.info(f"🔄 Changed stream in {chat_id}: {track['title']}")
-            except Exception:
-                await self._call.join_group_call(chat_id, audio)
-                logger.info(f"✅ Joined voice chat in {chat_id}: {track['title']}")
+            # MediaStream replaces AudioPiped in py-tgcalls >=2.x
+            # play() handles both join and change_stream automatically
+            stream = MediaStream(stream_url)
+            await self._call.play(chat_id, stream)
+            logger.info(f"✅ Playing in {chat_id}: {track['title']}")
 
             self._active[chat_id] = ActiveStream(track, chat_id)
             await StatsDB.increment("songs_played")
@@ -109,7 +107,7 @@ class MusicManager:
     async def stop(self, chat_id: int):
         try:
             if self._call:
-                await self._call.leave_group_call(chat_id)
+                await self._call.leave_call(chat_id)
         except Exception as e:
             logger.debug(f"Stop error in {chat_id}: {e}")
         finally:
@@ -119,7 +117,7 @@ class MusicManager:
     async def pause(self, chat_id: int) -> bool:
         try:
             if self._call and chat_id in self._active:
-                await self._call.pause_stream(chat_id)
+                await self._call.pause(chat_id)
                 self._active[chat_id].paused = True
                 return True
         except Exception as e:
@@ -129,7 +127,7 @@ class MusicManager:
     async def resume(self, chat_id: int) -> bool:
         try:
             if self._call and chat_id in self._active:
-                await self._call.resume_stream(chat_id)
+                await self._call.resume(chat_id)
                 self._active[chat_id].paused = False
                 return True
         except Exception as e:
@@ -190,7 +188,7 @@ class MusicManager:
             if not ChatDB.get_247(chat_id):
                 try:
                     if self._call:
-                        await self._call.leave_group_call(chat_id)
+                        await self._call.leave_call(chat_id)
                 except Exception:
                     pass
 

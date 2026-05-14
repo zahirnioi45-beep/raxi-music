@@ -27,6 +27,8 @@ import glob
 
 from pyrogram import Client
 from pytgcalls import PyTgCalls
+from pytgcalls import filters as ptc_filters
+from pytgcalls.types import StreamEnded
 
 from config import Config
 from database import db, StatsDB
@@ -88,8 +90,8 @@ def load_handlers(app: Client):
 # ─── PyTgCalls Stream End Hook ────────────────────────────────────────────────
 
 def register_call_handlers(call: PyTgCalls):
-    @call.on_stream_end()
-    async def stream_end_handler(client, update):
+    @call.on_update(ptc_filters.stream_end)
+    async def stream_end_handler(client: PyTgCalls, update: StreamEnded):
         chat_id = update.chat_id
         logger.info(f"🔚 Stream ended in {chat_id}")
         await music.on_stream_end(chat_id)

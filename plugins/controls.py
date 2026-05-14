@@ -19,8 +19,8 @@ logger = get_logger(__name__)
 def setup(app: Client):
 
     @app.on_message(filters.command("skip") & filters.group)
-    @admin_only
     @maintenance_check
+    @admin_only
     async def skip_command(client: Client, message: Message):
         chat_id = message.chat.id
         if not music.is_active(chat_id):
@@ -40,8 +40,8 @@ def setup(app: Client):
             await message.reply_text("⏹ **Queue habis.** Bot keluar dari voice chat.", quote=True)
 
     @app.on_message(filters.command("stop") & filters.group)
-    @admin_only
     @maintenance_check
+    @admin_only
     async def stop_command(client: Client, message: Message):
         chat_id = message.chat.id
         if not music.is_active(chat_id):
@@ -54,8 +54,8 @@ def setup(app: Client):
         )
 
     @app.on_message(filters.command("pause") & filters.group)
-    @admin_only
     @maintenance_check
+    @admin_only
     async def pause_command(client: Client, message: Message):
         chat_id = message.chat.id
         if not music.is_playing(chat_id):
@@ -71,8 +71,8 @@ def setup(app: Client):
             await message.reply_text("❌ `Gagal pause.`", quote=True)
 
     @app.on_message(filters.command("resume") & filters.group)
-    @admin_only
     @maintenance_check
+    @admin_only
     async def resume_command(client: Client, message: Message):
         chat_id = message.chat.id
         if not music.is_paused(chat_id):
@@ -88,8 +88,8 @@ def setup(app: Client):
             await message.reply_text("❌ `Gagal resume.`", quote=True)
 
     @app.on_message(filters.command("loop") & filters.group)
-    @admin_only
     @maintenance_check
+    @admin_only
     async def loop_command(client: Client, message: Message):
         chat_id = message.chat.id
         args = message.text.split(maxsplit=1)
@@ -113,8 +113,8 @@ def setup(app: Client):
         )
 
     @app.on_message(filters.command("shuffle") & filters.group)
-    @admin_only
     @maintenance_check
+    @admin_only
     async def shuffle_command(client: Client, message: Message):
         chat_id = message.chat.id
         ok = await music.shuffle_queue(chat_id)
@@ -124,8 +124,8 @@ def setup(app: Client):
             await message.reply_text("❌ `Queue kosong atau hanya ada 1 lagu.`", quote=True)
 
     @app.on_message(filters.command("volume") & filters.group)
-    @admin_only
     @maintenance_check
+    @admin_only
     async def volume_command(client: Client, message: Message):
         chat_id = message.chat.id
         args = message.text.split(maxsplit=1)

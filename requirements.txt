@@ -1,6 +1,7 @@
 pyrogram==2.0.106
 TgCrypto==1.2.5
-pytgcalls==3.0.0.dev24
+py-tgcalls>=2.2.11
+ntgcalls>=2.1.0
 yt-dlp>=2024.1.0
 aiohttp>=3.9.0
 python-dotenv>=1.0.0

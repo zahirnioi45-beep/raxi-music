@@ -64,20 +64,18 @@ if ! python3 -c "import pyrogram" &>/dev/null 2>&1; then
     echo "  → pyrogram + TgCrypto..."
     pip install -q "pyrogram==2.0.106" "TgCrypto==1.2.5" || { echo "❌ pyrogram gagal!"; exit 1; }
 
-    echo "  → ntgcalls (pytgcalls core)..."
-    pip install -q ntgcalls || pip install -q ntgcalls --pre || echo "⚠️ ntgcalls skip"
+    echo "  → ntgcalls (native tgcalls core)..."
+    pip install -q "ntgcalls>=2.1.0" || { echo "❌ ntgcalls gagal!"; exit 1; }
 
-    echo "  → pytgcalls (no deps check)..."
-    pip install -q --no-deps "pytgcalls==2.1.0" || \
-    pip install -q --no-deps "pytgcalls==1.0.0" || \
-    pip install -q --no-deps pytgcalls || { echo "❌ pytgcalls gagal!"; exit 1; }
+    echo "  → py-tgcalls (pytgcalls wrapper)..."
+    pip install -q "py-tgcalls>=2.2.11" || { echo "❌ py-tgcalls gagal!"; exit 1; }
 
     echo "  → other deps..."
     pip install -q yt-dlp aiohttp python-dotenv psutil
 
     echo "  → verifikasi..."
     python3 -c "import pyrogram; print('  pyrogram ✅')"
-    python3 -c "import pytgcalls; print('  pytgcalls ✅')" || echo "  pytgcalls ⚠️ cek manual"
+    python3 -c "from pytgcalls import PyTgCalls; print('  pytgcalls ✅')" || echo "  pytgcalls ⚠️ cek manual"
     python3 -c "import yt_dlp; print('  yt-dlp ✅')"
     echo "✅ Dependencies selesai"
 else
