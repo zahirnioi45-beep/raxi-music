@@ -12,7 +12,7 @@ echo "║   🌑  RAXI MUSIC — Auto Start        ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
-# ── Generate .env dari Codespaces Secrets ──────────────────────
+# ── Generate .env ──────────────────────────────────────────────
 cat > $DIR/.env << EOF
 API_ID=${API_ID:-}
 API_HASH=${API_HASH:-}
@@ -33,7 +33,7 @@ MAX_QUEUE_SIZE=${MAX_QUEUE_SIZE:-50}
 EOF
 echo "✅ .env generated"
 
-# ── Cek secrets wajib ──────────────────────────────────────────
+# ── Cek secrets ────────────────────────────────────────────────
 if [ -z "$API_ID" ] || [ -z "$BOT_TOKEN" ] || [ -z "$STRING_SESSION" ]; then
     echo "⚠️  SECRETS BELUM LENGKAP!"
     echo "Buka: https://github.com/zahirnioi45-beep/raxi-music/settings/secrets/codespaces"
@@ -46,25 +46,49 @@ mkdir -p $DIR/{database,cache,downloads}
 # ── Install ffmpeg ─────────────────────────────────────────────
 if ! command -v ffmpeg &>/dev/null; then
     echo "📦 Installing ffmpeg..."
-    apt-get install -y -qq ffmpeg 2>/dev/null && echo "✅ ffmpeg installed"
+    apt-get install -y -qq ffmpeg 2>/dev/null && echo "✅ ffmpeg OK"
 fi
 
 # ── Setup venv ─────────────────────────────────────────────────
 if [ ! -f "$VENV/bin/python3" ]; then
-    echo "🐍 Creating virtual environment..."
+    echo "🐍 Creating venv..."
     python3 -m venv $VENV
-    echo "✅ venv created"
 fi
 
 source $VENV/bin/activate
 echo "✅ Python: $(python3 --version)"
 
-# ── Install dependencies ───────────────────────────────────────
+# ── Install dependencies (dengan error handling) ───────────────
 if ! python3 -c "import pyrogram" &>/dev/null 2>&1; then
-    echo "📦 Installing dependencies (ini butuh ~1-2 menit)..."
+    echo "📦 Installing dependencies..."
+
     pip install -q --upgrade pip
-    pip install -q -r $DIR/requirements.txt
-    echo "✅ Dependencies installed"
+
+    # Install satu per satu agar mudah debug jika ada yang gagal
+    echo "  → pyrogram..."
+    pip install -q "pyrogram==2.0.106" "TgCrypto==1.2.5" || {
+        echo "❌ Gagal install pyrogram!"
+        exit 1
+    }
+
+    echo "  → pytgcalls..."
+    pip install -q "pytgcalls==3.0.0.dev24" || \
+    pip install -q "pytgcalls" || {
+        echo "❌ Gagal install pytgcalls!"
+        exit 1
+    }
+
+    echo "  → other deps..."
+    pip install -q yt-dlp aiohttp python-dotenv psutil || {
+        echo "❌ Gagal install deps lain!"
+        exit 1
+    }
+
+    # Verifikasi
+    python3 -c "import pyrogram; import pytgcalls; print('✅ All imports OK')" || {
+        echo "❌ Import check gagal!"
+        exit 1
+    }
 else
     echo "✅ Dependencies sudah ada"
 fi
@@ -75,7 +99,8 @@ echo ""
 
 cd $DIR
 
-# ── Auto restart jika crash ────────────────────────────────────
+# ── Run bot dengan auto restart ────────────────────────────────
+CRASH_COUNT=0
 while true; do
     python3 main.py
     EXIT=$?
@@ -83,6 +108,12 @@ while true; do
         echo "👋 Bot stopped normally."
         break
     fi
-    echo "⚠️  Bot crash (exit $EXIT) — Restart dalam 5 detik..."
+    CRASH_COUNT=$((CRASH_COUNT + 1))
+    echo "⚠️  Bot crash #$CRASH_COUNT (exit $EXIT) — Restart dalam 5 detik..."
+    # Kalau crash 10x berturut-turut, stop dulu biar tidak spam
+    if [ $CRASH_COUNT -ge 10 ]; then
+        echo "❌ Terlalu banyak crash. Cek error di atas."
+        break
+    fi
     sleep 5
 done
